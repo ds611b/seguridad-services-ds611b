@@ -1,8 +1,8 @@
-// src/routes/authRoutes.js
 import { register, login, refresh, logout } from '../services/authService.js'
 import { Type } from '@sinclair/typebox'
 
 export default async function (fastify) {
+  // Esquema para el cuerpo de solicitud en /auth/register
   const RegisterBody = Type.Object({
     nombre: Type.String({ maxLength: 100 }),
     apellido: Type.String({ maxLength: 100 }),
@@ -17,7 +17,11 @@ export default async function (fastify) {
       tags: ['Auth'],
       summary: 'Crear cuenta',
       body: RegisterBody,
-      response: { 201: Type.Object({ id: Type.Integer() }) }
+      response: {
+        201: Type.Object({
+          id: Type.Integer()
+        })
+      }
     }
   }, async (req, reply) => {
     const user = await register(req.body)
@@ -51,8 +55,14 @@ export default async function (fastify) {
     schema: {
       tags: ['Auth'],
       summary: 'Renovar access token',
-      body: Type.Object({ refreshToken: Type.String() }),
-      response: { 200: Type.Object({ accessToken: Type.String() }) }
+      body: Type.Object({
+        refreshToken: Type.String()
+      }),
+      response: {
+        200: Type.Object({
+          accessToken: Type.String()
+        })
+      }
     }
   }, async (req, reply) => {
     const data = await refresh(req.body, fastify)
@@ -60,13 +70,19 @@ export default async function (fastify) {
     reply.send(data)
   })
 
-  /* ---------- LOGOUT ---------- */
+  /** ---------- LOGOUT ---------- */
   fastify.post('/auth/logout', {
     schema: {
       tags: ['Auth'],
       summary: 'Cerrar sesión (revocar refresh-token)',
-      body: Type.Object({ refreshToken: Type.String() }),
-      response: { 200: Type.Object({ success: Type.Boolean() }) }
+      body: Type.Object({
+        refreshToken: Type.String()
+      }),
+      response: {
+        200: Type.Object({
+          success: Type.Boolean()
+        })
+      }
     }
   }, async (req, reply) => {
     const ok = await logout(req.body)
@@ -74,7 +90,7 @@ export default async function (fastify) {
     reply.send({ success: true })
   })
 
-  /* ---------- ME / CHECK TOKEN ---------- */
+  /** ---------- ME (Check Token) ---------- */
   fastify.get('/auth/me', {
     schema: {
       tags: ['Auth'],
@@ -86,14 +102,14 @@ export default async function (fastify) {
           role: Type.Integer(),
           nombre: Type.String(),
           email: Type.String({ format: 'email' }),
-          iat: Type.Optional(Type.Integer()),
-          exp: Type.Optional(Type.Integer())
+          iat: Type.Optional(Type.Integer()), // issued at
+          exp: Type.Optional(Type.Integer())  // expiration
         })
       }
     },
-    preHandler: [fastify.authenticate]
+    preHandler: [fastify.authenticate] // Middleware que verifica el token
   }, async (req, reply) => {
-    // fastify.jwtVerify() ya cargó el payload en request.user
+    // El middleware fastify.authenticate ya agregó el payload a req.user
     reply.send(req.user)
   })
 }
