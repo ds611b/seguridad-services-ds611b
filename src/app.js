@@ -7,10 +7,12 @@ import staticFiles from '@fastify/static';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import cors from '@fastify/cors';
+import jwtPlugin from './plugins/jwt.js'
 /**
  * Rutas de ADMIN
  */
 import roleRoutes from './routes/roleRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 
 /**
  * Configuración para usar __dirname con ES modules.
@@ -50,7 +52,11 @@ await fastify.register(swagger, {
       url: 'https://swagger.io',
       description: 'Encuentra más información aquí'
     },
-    components: {}
+    components: {
+      securitySchemes: {
+        bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }
+      }
+    }
   }
 });
 
@@ -158,6 +164,8 @@ await fastify.register(swaggerUI, {
   transformSpecificationClone: true
 });
 
+await fastify.register(jwtPlugin)
+
 /**
  * Configuración para servir archivos estáticos.
  * Define el directorio raíz y el prefijo para acceder a los archivos públicos.
@@ -173,6 +181,8 @@ await fastify.register(staticFiles, {
  */
 fastify.register(homeRoutes, { prefix: '/api' });
 fastify.register(roleRoutes, { prefix: '/api' });
+fastify.register(authRoutes, { prefix: '/api' })
+
 
 /**
  * Registra la landing page de la API

@@ -8,6 +8,8 @@ import AplicacionesEstudiantes from './AplicacionesEstudiantes.js';
 import Habilidades from './Habilidades.js';
 import UsuariosHabilidades from './UsuariosHabilidades.js';
 import ProyectosInstitucionesHabilidades from './ProyectosInstitucionesHabilidades.js';
+import UsuariosSesiones from './UsuariosSesiones.js';
+import Sesiones from './Sesiones.js';
 
 // Definir relaciones
 
@@ -39,6 +41,13 @@ Habilidades.belongsToMany(ProyectosInstitucion, { through: ProyectosInstitucione
 ProyectosInstitucionesHabilidades.belongsTo(ProyectosInstitucion, { foreignKey: 'proyecto_id', as: 'proyecto'});
 ProyectosInstitucionesHabilidades.belongsTo(Habilidades, { foreignKey: 'habilidad_id', as: 'habilidades', onDelete: 'CASCADE'});
 
+// Usuarios y UsuariosSesiones
+Usuarios.hasMany(UsuariosSesiones, { foreignKey: 'usuario_id', onDelete: 'CASCADE' })
+UsuariosSesiones.belongsTo(Usuarios, { foreignKey: 'usuario_id', onDelete: 'CASCADE' })
+
+Sesiones.hasMany(UsuariosSesiones, { foreignKey: 'sesion_id', onDelete: 'CASCADE' })
+UsuariosSesiones.belongsTo(Sesiones, { foreignKey: 'sesion_id', onDelete: 'CASCADE' })
+
 
 // Exportar todos los modelos
 export {
@@ -51,4 +60,6 @@ export {
   Habilidades,
   UsuariosHabilidades,
   ProyectosInstitucionesHabilidades,
+  UsuariosSesiones,
+  Sesiones
 };
