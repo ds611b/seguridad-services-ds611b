@@ -8,6 +8,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import cors from '@fastify/cors';
 import jwtPlugin from './plugins/jwt.js'
+import sensible from '@fastify/sensible'
 /**
  * Rutas de ADMIN
  */
@@ -164,7 +165,8 @@ await fastify.register(swaggerUI, {
   transformSpecificationClone: true
 });
 
-await fastify.register(jwtPlugin)
+await fastify.register(jwtPlugin);
+await fastify.register(sensible);
 
 /**
  * Configuración para servir archivos estáticos.
