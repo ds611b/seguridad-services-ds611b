@@ -38,7 +38,7 @@ export async function register({ nombre, apellido, email, password, rol_id }) {
   // Validación del formato del correo electrónico institucional
   const emailRegex = /^[\w.+-]+@itca\.edu\.sv$/;
   if (!emailRegex.test(email)) {
-    throw { 
+    throw {
       statusCode: 400,
       code: 'INVALID_EMAIL_FORMAT',
       message: 'El correo electrónico debe ser una dirección válida @itca.edu.sv'
@@ -47,12 +47,12 @@ export async function register({ nombre, apellido, email, password, rol_id }) {
 
   const existingUser = await Usuarios.findOne({ where: { email } });
   if (existingUser) {
-    throw { 
-      statusCode: 409, 
+    throw {
+      statusCode: 409,
       code: 'EMAIL_ALREADY_EXISTS',
       message: 'El correo electrónico ya está registrado'
     };
-  }  
+  }
 
   const hash = await bcrypt.hash(password, SALT_ROUNDS)
   const user = await Usuarios.create({ nombre, apellido, email, password_hash: hash, rol_id })
@@ -72,7 +72,7 @@ export async function login({ email, password }, fastify) {
   // Validación del formato del correo electrónico
   const emailRegex = /^[\w.+-]+@itca\.edu\.sv$/;
   if (!emailRegex.test(email)) {
-    throw { 
+    throw {
       statusCode: 400,
       code: 'INVALID_EMAIL_FORMAT',
       message: 'El correo electrónico debe ser una dirección válida @itca.edu.sv'
@@ -138,4 +138,34 @@ export async function logout({ refreshToken }) {
     }
   }
   return false
+}
+
+export async function requestReset(email, fastify) {
+  const user = await Usuarios.findOne({ where: { email } })
+  if (!user) return null
+
+  // 2. Crear token de 30 min solo para reset.
+  const resetToken = fastify.jwt.sign(
+    { uid: user.id, pwd_reset: true },
+    { expiresIn: '30m' }
+  )
+  return resetToken
+}
+
+export async function resetPassword(token, newPassword, fastify) {
+  try {
+    // 1. Verificar token
+    const payload = await fastify.jwt.verify(token)
+    if (!payload.pwd_reset) throw new Error('invalid')
+
+    // 2. Cambiar contraseña
+    const hash = await bcrypt.hash(newPassword, 10)
+    await Usuarios.update(
+      { password_hash: hash },
+      { where: { id: payload.uid } }
+    )
+    return true
+  } catch (err) {
+    return false
+  }
 }

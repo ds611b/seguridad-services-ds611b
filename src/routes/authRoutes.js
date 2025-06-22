@@ -1,4 +1,4 @@
-import { register, login, refresh, logout } from '../services/authService.js'
+import { register, login, refresh, logout, requestReset, resetPassword } from '../services/authService.js'
 import { Type } from '@sinclair/typebox'
 
 export default async function (fastify) {
@@ -111,5 +111,50 @@ export default async function (fastify) {
   }, async (req, reply) => {
     // El middleware fastify.authenticate ya agregó el payload a req.user
     reply.send(req.user)
+  });
+
+  /* ---------- REQUEST-RESET ---------- */
+  fastify.post('/auth/request-reset', {
+    schema: {
+      tags: ['Auth'],
+      summary: 'Genera token para restablecer contraseña (sin e-mail)',
+      body: Type.Object({ email: Type.String({ format: 'email' }) }),
+      response: {
+        200: Type.Object({
+          success: Type.Boolean(),
+          resetToken: Type.Optional(Type.String()),
+          expiresIn: Type.Optional(Type.String())
+        })
+      }
+    }
+  }, async (req, reply) => {
+    const token = await requestReset(req.body.email, fastify)
+
+    if (!token) {
+      return reply.send({ success: false })
+    }
+
+    reply.send({
+      success: true,
+      resetToken: token,
+      expiresIn: '30m'
+    })
+  })
+
+  /* ---------- RESET PASSWORD ---------- */
+  fastify.post('/auth/reset', {
+    schema: {
+      tags: ['Auth'],
+      summary: 'Aplica nueva contraseña usando token',
+      body: Type.Object({
+        token: Type.String(),
+        newPassword: Type.String({ minLength: 8 })
+      }),
+      response: { 200: Type.Object({ success: Type.Boolean() }) }
+    }
+  }, async (req, reply) => {
+    const ok = await resetPassword(req.body.token, req.body.newPassword, fastify)
+    if (!ok) return reply.error?.(400, 'Token inválido o expirado')      // usa tu helper
+    reply.send({ success: true })
   })
 }
