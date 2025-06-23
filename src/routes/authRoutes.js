@@ -101,6 +101,7 @@ export default async function (fastify) {
           uid: Type.Integer(),
           role: Type.Integer(),
           nombre: Type.String(),
+          apellido: Type.String(),
           email: Type.String({ format: 'email' }),
           iat: Type.Optional(Type.Integer()), // issued at
           exp: Type.Optional(Type.Integer())  // expiration

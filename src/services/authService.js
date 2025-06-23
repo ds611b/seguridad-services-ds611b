@@ -11,7 +11,8 @@ const SALT_ROUNDS = 10
  * @param {Object} user 
  * @param {number} user.id 
  * @param {number} user.rol_id 
- * @param {string} user.nombre 
+ * @param {string} user.nombre
+ * @param {string} user.apellido 
  * @param {string} user.email 
  * @returns {Object}
  */
@@ -20,6 +21,7 @@ function buildPayload(user) {
     uid: user.id,
     role: user.rol_id,
     nombre: user.nombre,
+    apellido: user.apellido,
     email: user.email
   }
 }
