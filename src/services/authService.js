@@ -2,6 +2,7 @@
 
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
+import { sha256 } from '../utils/sha256.js'
 import { Usuarios, Sesiones, UsuariosSesiones } from '../models/index.js'
 
 const SALT_ROUNDS = 10
@@ -13,16 +14,18 @@ const SALT_ROUNDS = 10
  * @param {number} user.rol_id 
  * @param {string} user.nombre
  * @param {string} user.apellido 
- * @param {string} user.email 
+ * @param {string} user.email
+ * @param {string} sesionId
  * @returns {Object}
  */
-function buildPayload(user) {
+function buildPayload(user, sesionId) {
   return {
     uid: user.id,
     role: user.rol_id,
     nombre: user.nombre,
     apellido: user.apellido,
-    email: user.email
+    email: user.email,
+    sid: sesionId
   }
 }
 
@@ -81,25 +84,31 @@ export async function login({ email, password }, fastify) {
     };
   }
 
-  const user = await Usuarios.findOne({ where: { email } })
+  const user = await Usuarios.findOne({ where: { email } });
   if (!user) return null
 
-  const ok = await bcrypt.compare(password, user.password_hash)
+  const ok = await bcrypt.compare(password, user.password_hash);
   if (!ok) return null
 
   const sesion = await Sesiones.create({})
+  const accessToken = fastify.jwt.sign(
+    buildPayload(user, sesion.id)
+  );
 
-  const accessToken = fastify.jwt.sign(buildPayload(user))
-  const refreshPlain = crypto.randomBytes(40).toString('hex')
-  const refreshHash = await bcrypt.hash(refreshPlain, SALT_ROUNDS)
+  //Refresh-token + hashes
+  const refreshPlain = crypto.randomBytes(40).toString('hex');
+  const refreshSha256 = sha256(refreshPlain);
+  const refreshBcrypt = await bcrypt.hash(refreshPlain, SALT_ROUNDS);
 
   await UsuariosSesiones.create({
-    token: refreshHash,
+    token: refreshBcrypt,
+    token_sha256: refreshSha256,
     usuario_id: user.id,
     sesion_id: sesion.id
   })
 
   return { accessToken, refreshToken: refreshPlain }
+
 }
 
 /**
@@ -110,15 +119,21 @@ export async function login({ email, password }, fastify) {
  * @returns {Promise<Object|null>} 
  */
 export async function refresh({ refreshToken }, fastify) {
-  const filas = await UsuariosSesiones.findAll()
-  for (const fila of filas) {
-    if (await bcrypt.compare(refreshToken, fila.token)) {
-      const user = await Usuarios.findByPk(fila.usuario_id)
-      const newAccess = fastify.jwt.sign(buildPayload(user))
-      return { accessToken: newAccess }
+  const fila = await UsuariosSesiones.findOne({
+    where: {
+      token_sha256: sha256(refreshToken),
+      revoked_at: null                      // sólo sesiones activas
     }
-  }
-  return null
+  })
+  if (!fila) return null
+  if (!(await bcrypt.compare(refreshToken, fila.token))) return null
+
+  const user = await Usuarios.findByPk(fila.usuario_id)
+  const newAccess = fastify.jwt.sign(
+    buildPayload(user, fila.sesion_id),
+    { expiresIn: ACCESS_EXPIRES }
+  )
+  return { accessToken: newAccess }
 }
 
 /**
@@ -128,25 +143,29 @@ export async function refresh({ refreshToken }, fastify) {
  * @returns {Promise<boolean>} 
  */
 export async function logout({ refreshToken }) {
-  const filas = await UsuariosSesiones.findAll()
-  for (const fila of filas) {
-    if (await bcrypt.compare(refreshToken, fila.token)) {
-      await Sesiones.update(
-        { closed_at: new Date(), updated_at: new Date() },
-        { where: { id: fila.sesion_id } }
-      )
-      await fila.destroy()
-      return true
+  const fila = await UsuariosSesiones.findOne({
+    where: {
+      token_sha256: sha256(refreshToken),
+      revoked_at: null
     }
-  }
-  return false
+  })
+  if (!fila) return false
+  if (!(await bcrypt.compare(refreshToken, fila.token))) return false
+
+  await Sesiones.update(
+    { closed_at: new Date(), updated_at: new Date() },
+    { where: { id: fila.sesion_id } }
+  )
+
+  await fila.update({ revoked_at: new Date(), updated_at: new Date() })
+  return true
 }
 
 export async function requestReset(email, fastify) {
   const user = await Usuarios.findOne({ where: { email } })
   if (!user) return null
 
-  // 2. Crear token de 30 min solo para reset.
+  // Crear token de 30 min solo para reset.
   const resetToken = fastify.jwt.sign(
     { uid: user.id, pwd_reset: true },
     { expiresIn: '30m' }
