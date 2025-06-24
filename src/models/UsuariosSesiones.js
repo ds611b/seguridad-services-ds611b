@@ -19,6 +19,16 @@ const UsuariosSesiones = sequelize.define('UsuariosSesiones', {
   sesion_id: {
     type: DataTypes.INTEGER,
     allowNull: false
+  },
+  token_sha256: {
+    type: DataTypes.CHAR(64),
+    allowNull: false,
+    unique: true
+  },
+  revoked_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    defaultValue: null
   }
 }, {
   tableName: 'UsuariosSesiones',
