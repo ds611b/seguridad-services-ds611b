@@ -15,7 +15,7 @@ import Sesiones from './Sesiones.js';
 
 // Roles y Usuarios (1:N)
 Roles.hasMany(Usuarios, { foreignKey: 'rol_id', onDelete: 'RESTRICT' });
-Usuarios.belongsTo(Roles, { foreignKey: 'rol_id', onDelete: 'RESTRICT' });
+Usuarios.belongsTo(Roles, { foreignKey: 'rol_id', as: 'rol', onDelete: 'RESTRICT' });
 
 // Usuarios y PerfilUsuario (1:1)
 Usuarios.hasOne(PerfilUsuario, { foreignKey: 'usuario_id', onDelete: 'CASCADE' });

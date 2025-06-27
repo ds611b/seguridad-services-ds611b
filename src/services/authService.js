@@ -3,7 +3,7 @@
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import { sha256 } from '../utils/sha256.js'
-import { Usuarios, Sesiones, UsuariosSesiones } from '../models/index.js'
+import { Usuarios, Sesiones, UsuariosSesiones, Roles } from '../models/index.js'
 
 const SALT_ROUNDS = 10
 
@@ -12,6 +12,7 @@ const SALT_ROUNDS = 10
  * @param {Object} user 
  * @param {number} user.id 
  * @param {number} user.rol_id 
+ * @param {Object} user.rol
  * @param {string} user.nombre
  * @param {string} user.apellido 
  * @param {string} user.email
@@ -22,6 +23,7 @@ function buildPayload(user, sesionId) {
   return {
     uid: user.id,
     role: user.rol_id,
+    role_name: user.rol ? user.rol.nombre : 'otro',
     nombre: user.nombre,
     apellido: user.apellido,
     email: user.email,
@@ -84,7 +86,10 @@ export async function login({ email, password }, fastify) {
     };
   }
 
-  const user = await Usuarios.findOne({ where: { email } });
+  const user = await Usuarios.findOne({
+    where: { email },
+    include: [{ model: Roles, as: 'rol' }]
+  });
   if (!user) return null
 
   const ok = await bcrypt.compare(password, user.password_hash);
@@ -128,7 +133,9 @@ export async function refresh({ refreshToken }, fastify) {
   if (!fila) return null
   if (!(await bcrypt.compare(refreshToken, fila.token))) return null
 
-  const user = await Usuarios.findByPk(fila.usuario_id)
+  const user = await Usuarios.findByPk(fila.usuario_id, {
+    include: [{ model: Roles, as: 'rol' }]
+  })
   const newAccess = fastify.jwt.sign(
     buildPayload(user, fila.sesion_id),
     { expiresIn: ACCESS_EXPIRES }

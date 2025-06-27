@@ -100,6 +100,7 @@ export default async function (fastify) {
         200: Type.Object({
           uid: Type.Integer(),
           role: Type.Integer(),
+          role_name: Type.String(),
           nombre: Type.String(),
           apellido: Type.String(),
           email: Type.String({ format: 'email' }),
