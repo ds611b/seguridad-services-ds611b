@@ -99,7 +99,8 @@ fastify.addSchema({
     email: { type: 'string', maxLength: 150, format: 'email', example: 'juan.perez@example.com' },
     password_hash: { type: 'string', maxLength: 255, example: '$2b$10$EIXaN/Z8g1234567890abcdefg' },
     telefono: { type: 'string', maxLength: 20, nullable: true, example: '+5491123456789' },
-    rol_id: { type: 'integer', example: 2 }
+    rol_id: { type: 'integer', example: 2 },
+    rol: { $ref: 'Roles' }
   },
   required: ['nombre', 'apellido', 'email', 'password_hash', 'rol_id']
 });
