@@ -90,10 +90,22 @@ export async function login({ email, password }, fastify) {
     where: { email },
     include: [{ model: Roles, as: 'rol' }]
   });
-  if (!user) return null
+  if (!user) {
+    throw {
+      statusCode: 401,
+      code: 'USER_NOT_FOUND',
+      message: 'No existe una cuenta asociada a este correo electrónico'
+    };
+  }
 
   const ok = await bcrypt.compare(password, user.password_hash);
-  if (!ok) return null
+  if (!ok) {
+    throw {
+      statusCode: 401,
+      code: 'INVALID_CREDENTIALS',
+      message: 'Contraseña incorrecta'
+    };
+  }
 
   const sesion = await Sesiones.create({})
   const accessToken = fastify.jwt.sign(
