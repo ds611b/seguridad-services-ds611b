@@ -4,8 +4,10 @@ import { Type } from '@sinclair/typebox'
 export default async function (fastify) {
   // Esquema para el cuerpo de solicitud en /auth/register
   const RegisterBody = Type.Object({
-    nombre: Type.String({ maxLength: 100 }),
-    apellido: Type.String({ maxLength: 100 }),
+    primer_nombre: Type.String({ maxLength: 100 }),
+    segundo_nombre: Type.String({ maxLength: 100 }),
+    primer_apellido: Type.String({ maxLength: 100 }),
+    segundo_apellido: Type.String({ maxLength: 100 }),
     email: Type.String({ format: 'email' }),
     password: Type.String({ minLength: 8 }),
     rol_id: Type.Integer()

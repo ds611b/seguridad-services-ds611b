@@ -24,8 +24,8 @@ function buildPayload(user, sesionId) {
     uid: user.id,
     role: user.rol_id,
     role_name: user.rol ? user.rol.nombre : 'otro',
-    nombre: user.nombre,
-    apellido: user.apellido,
+    primer_nombre: user.primer_nombre,
+    primer_apellido: user.primer_apellido,
     email: user.email,
     sid: sesionId
   }
@@ -41,7 +41,7 @@ function buildPayload(user, sesionId) {
  * @param {number} data.rol_id 
  * @returns {Promise<Object>}
  */
-export async function register({ nombre, apellido, email, password, rol_id }) {
+export async function register({ primer_nombre, segundo_nombre, primer_apellido, segundo_apellido, email, password, rol_id }) {
   // Validación del formato del correo electrónico institucional
   const emailRegex = /^[\w.+-]+@itca\.edu\.sv$/;
   if (!emailRegex.test(email)) {
@@ -62,7 +62,7 @@ export async function register({ nombre, apellido, email, password, rol_id }) {
   }
 
   const hash = await bcrypt.hash(password, SALT_ROUNDS)
-  const user = await Usuarios.create({ nombre, apellido, email, password_hash: hash, rol_id })
+  const user = await Usuarios.create({primer_nombre, segundo_nombre, primer_apellido, segundo_apellido, email, password_hash: hash, rol_id })
   return user
 }
 
