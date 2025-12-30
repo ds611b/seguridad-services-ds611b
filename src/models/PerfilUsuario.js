@@ -15,6 +15,10 @@ const PerfilUsuario = sequelize.define('PerfilUsuario', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  telefono: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+  },
   fecha_nacimiento: {
     type: DataTypes.DATE,
     allowNull: true,
@@ -26,6 +30,22 @@ const PerfilUsuario = sequelize.define('PerfilUsuario', {
   foto_perfil: {
     type: DataTypes.STRING(255),
     allowNull: true,
+  },
+  carnet: {
+    type: DataTypes.STRING(7),
+    allowNull: false,
+  },
+  anio_academico: {
+    type: DataTypes.STRING(25),
+    allowNull: true,
+  },
+  id_carrera: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'Carreras',
+      key: 'id'
+    }
   },
 }, {
   tableName: 'PerfilUsuario',
