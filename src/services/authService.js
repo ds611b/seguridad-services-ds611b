@@ -98,6 +98,15 @@ export async function login({ email, password }, fastify) {
     };
   }
 
+  // Validar que el usuario esté activo
+  if (user.status === 0) {
+    throw {
+      statusCode: 403,
+      code: 'USER_INACTIVE',
+      message: 'La cuenta de usuario está desactivada'
+    };
+  }
+
   const ok = await bcrypt.compare(password, user.password_hash);
   if (!ok) {
     throw {
@@ -148,6 +157,12 @@ export async function refresh({ refreshToken }, fastify) {
   const user = await Usuarios.findByPk(fila.usuario_id, {
     include: [{ model: Roles, as: 'rol' }]
   })
+
+  // Validar que el usuario siga activo
+  if (!user || user.status === 0) {
+    return null
+  }
+
   const newAccess = fastify.jwt.sign(
     buildPayload(user, fila.sesion_id),
     { expiresIn: ACCESS_EXPIRES }
@@ -182,7 +197,7 @@ export async function logout({ refreshToken }) {
 
 export async function requestReset(email, fastify) {
   const user = await Usuarios.findOne({ where: { email } })
-  if (!user) return null
+  if (!user || user.status === 0) return null
 
   // Crear token de 30 min solo para reset.
   const resetToken = fastify.jwt.sign(
@@ -198,8 +213,12 @@ export async function resetPassword(token, newPassword, fastify) {
     const payload = await fastify.jwt.verify(token)
     if (!payload.pwd_reset) throw new Error('invalid')
 
-    // 2. Cambiar contraseña
-    const hash = await bcrypt.hash(newPassword, 10)
+    // 2. Verificar que el usuario esté activo
+    const user = await Usuarios.findByPk(payload.uid)
+    if (!user || user.status === 0) return false
+
+    // 3. Cambiar contraseña
+    const hash = await bcrypt.hash(newPassword, SALT_ROUNDS)
     await Usuarios.update(
       { password_hash: hash },
       { where: { id: payload.uid } }
