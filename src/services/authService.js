@@ -42,14 +42,16 @@ function buildPayload(user, sesionId) {
  * @returns {Promise<Object>}
  */
 export async function register({ primer_nombre, segundo_nombre, primer_apellido, segundo_apellido, email, password, rol_id }) {
-  // Validación del formato del correo electrónico institucional
-  const emailRegex = /^[\w.+-]+@itca\.edu\.sv$/;
-  if (!emailRegex.test(email)) {
-    throw {
-      statusCode: 400,
-      code: 'INVALID_EMAIL_FORMAT',
-      message: 'El correo electrónico debe ser una dirección válida @itca.edu.sv'
-    };
+  // Validación del formato del correo electrónico institucional (no aplica para rol institución)
+  if (rol_id !== 4) {
+    const emailRegex = /^[\w.+-]+@itca\.edu\.sv$/;
+    if (!emailRegex.test(email)) {
+      throw {
+        statusCode: 400,
+        code: 'INVALID_EMAIL_FORMAT',
+        message: 'El correo electrónico debe ser una dirección válida @itca.edu.sv'
+      };
+    }
   }
 
   const existingUser = await Usuarios.findOne({ where: { email } });
@@ -75,16 +77,6 @@ export async function register({ primer_nombre, segundo_nombre, primer_apellido,
  * @returns {Promise<Object|null>} 
  */
 export async function login({ email, password }, fastify) {
-
-  // Validación del formato del correo electrónico
-  const emailRegex = /^[\w.+-]+@itca\.edu\.sv$/;
-  if (!emailRegex.test(email)) {
-    throw {
-      statusCode: 400,
-      code: 'INVALID_EMAIL_FORMAT',
-      message: 'El correo electrónico debe ser una dirección válida @itca.edu.sv'
-    };
-  }
 
   const user = await Usuarios.findOne({
     where: { email },
