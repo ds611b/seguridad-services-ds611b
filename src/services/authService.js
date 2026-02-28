@@ -6,6 +6,7 @@ import { sha256 } from '../utils/sha256.js'
 import { Usuarios, Sesiones, UsuariosSesiones, Roles } from '../models/index.js'
 
 const SALT_ROUNDS = 10
+const ACCESS_EXPIRES = process.env.JWT_ACCESS_EXPIRES || '15m'
 
 /**
  * Construye el payload JWT a partir del usuario.
@@ -109,7 +110,8 @@ export async function login({ email, password }, fastify) {
 
   const sesion = await Sesiones.create({})
   const accessToken = fastify.jwt.sign(
-    buildPayload(user, sesion.id)
+    buildPayload(user, sesion.id),
+    { expiresIn: ACCESS_EXPIRES }
   );
 
   //Refresh-token + hashes
