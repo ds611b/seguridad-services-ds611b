@@ -7,6 +7,41 @@ import { Usuarios, Sesiones, UsuariosSesiones, Roles } from '../models/index.js'
 
 const SALT_ROUNDS = 10
 const ACCESS_EXPIRES = process.env.JWT_ACCESS_EXPIRES || '15m'
+const BACKEND_ADMIN_URL = process.env.BACKEND_ADMIN_URL
+
+async function getAcademicSummary(userId) {
+  if (!BACKEND_ADMIN_URL || typeof fetch !== 'function') {
+    return { carrera_id: null, institucion_id: null }
+  }
+
+  const url = new URL(`/api/perfiles-usuario/usuario/${userId}/resumen-academico`, BACKEND_ADMIN_URL)
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 5000)
+
+  try {
+    const response = await fetch(url, {
+      headers: { accept: 'application/json' },
+      signal: controller.signal
+    })
+
+    if (!response.ok) {
+      return { carrera_id: null, institucion_id: null }
+    }
+
+    const data = await response.json()
+    const carreraId = data?.carrera_id ?? data?.id_carrera ?? data?.carrera?.id ?? null
+    const institucionId = data?.institucion_id ?? data?.id_institucion ?? data?.institucion?.id ?? null
+
+    return {
+      carrera_id: carreraId,
+      institucion_id: institucionId
+    }
+  } catch (err) {
+    return { carrera_id: null, institucion_id: null }
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
 
 /**
  * Construye el payload JWT a partir del usuario.
@@ -20,7 +55,9 @@ const ACCESS_EXPIRES = process.env.JWT_ACCESS_EXPIRES || '15m'
  * @param {string} sesionId
  * @returns {Object}
  */
-function buildPayload(user, sesionId) {
+async function buildPayload(user, sesionId) {
+  const academic = await getAcademicSummary(user.id)
+
   return {
     uid: user.id,
     role: user.rol_id,
@@ -28,7 +65,9 @@ function buildPayload(user, sesionId) {
     primer_nombre: user.primer_nombre,
     primer_apellido: user.primer_apellido,
     email: user.email,
-    sid: sesionId
+    sid: sesionId,
+    carrera_id: academic.carrera_id,
+    institucion_id: academic.institucion_id
   }
 }
 
@@ -111,7 +150,7 @@ export async function login({ email, password }, fastify) {
 
   const sesion = await Sesiones.create({})
   const accessToken = fastify.jwt.sign(
-    buildPayload(user, sesion.id),
+    await buildPayload(user, sesion.id),
     { expiresIn: ACCESS_EXPIRES }
   );
 
@@ -158,7 +197,7 @@ export async function refresh({ refreshToken }, fastify) {
   }
 
   const newAccess = fastify.jwt.sign(
-    buildPayload(user, fila.sesion_id),
+    await buildPayload(user, fila.sesion_id),
     { expiresIn: ACCESS_EXPIRES }
   )
   return { accessToken: newAccess }

@@ -106,6 +106,8 @@ export default async function (fastify) {
           nombre: Type.String(),
           apellido: Type.String(),
           email: Type.String({ format: 'email' }),
+          carrera_id: Type.Optional(Type.Union([Type.Integer(), Type.Null()])),
+          institucion_id: Type.Optional(Type.Union([Type.Integer(), Type.Null()])),
           sid: Type.Optional(Type.Integer()),
           iat: Type.Optional(Type.Integer()), // issued at
           exp: Type.Optional(Type.Integer())  // expiration
