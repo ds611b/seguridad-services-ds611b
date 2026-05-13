@@ -178,29 +178,50 @@ export async function login({ email, password }, fastify) {
  * @returns {Promise<Object|null>} 
  */
 export async function refresh({ refreshToken }, fastify) {
+  if (!refreshToken || typeof refreshToken !== 'string') {
+    console.error('❌ Refresh: Token inválido o vacío');
+    return null;
+  }
+
   const fila = await UsuariosSesiones.findOne({
     where: {
       token_sha256: sha256(refreshToken),
       revoked_at: null                      // sólo sesiones activas
     }
-  })
-  if (!fila) return null
-  if (!(await bcrypt.compare(refreshToken, fila.token))) return null
+  });
+  
+  if (!fila) {
+    console.warn('⚠️ Refresh: No se encontró sesión para el token');
+    return null;
+  }
+  
+  if (!(await bcrypt.compare(refreshToken, fila.token))) {
+    console.warn('⚠️ Refresh: Token bcrypt no coincide');
+    return null;
+  }
 
   const user = await Usuarios.findByPk(fila.usuario_id, {
     include: [{ model: Roles, as: 'rol' }]
-  })
+  });
 
   // Validar que el usuario siga activo
   if (!user || user.status === 0) {
-    return null
+    console.warn(`⚠️ Refresh: Usuario ${fila.usuario_id} no existe o está inactivo`);
+    return null;
   }
 
-  const newAccess = fastify.jwt.sign(
-    await buildPayload(user, fila.sesion_id),
-    { expiresIn: ACCESS_EXPIRES }
-  )
-  return { accessToken: newAccess }
+  try {
+    const newAccess = fastify.jwt.sign(
+      await buildPayload(user, fila.sesion_id),
+      { expiresIn: process.env.JWT_ACCESS_EXPIRES || ACCESS_EXPIRES }
+    );
+    
+    console.log('✅ Refresh: Access token generado correctamente');
+    return { accessToken: newAccess };
+  } catch (err) {
+    console.error('❌ Refresh: Error al generar JWT:', err);
+    return null;
+  }
 }
 
 /**

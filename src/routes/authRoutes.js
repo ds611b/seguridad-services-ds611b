@@ -63,13 +63,40 @@ export default async function (fastify) {
       response: {
         200: Type.Object({
           accessToken: Type.String()
+        }),
+        401: Type.Object({
+          message: Type.String()
         })
       }
     }
   }, async (req, reply) => {
-    const data = await refresh(req.body, fastify)
-    if (!data) return reply.unauthorized()
-    reply.send(data)
+    try {
+      const { refreshToken } = req.body;
+      
+      if (!refreshToken || typeof refreshToken !== 'string' || refreshToken.trim() === '') {
+        console.warn('⚠️ POST /auth/refresh: refreshToken inválido o vacío');
+        return reply.code(401).send({ 
+          message: 'Refresh token inválido o expirado' 
+        });
+      }
+
+      const data = await refresh({ refreshToken }, fastify);
+      
+      if (!data) {
+        console.warn('⚠️ POST /auth/refresh: Refresh falló para token:', refreshToken.substring(0, 10) + '...');
+        return reply.code(401).send({ 
+          message: 'Refresh token inválido o expirado' 
+        });
+      }
+      
+      console.log('✅ POST /auth/refresh: Refresh exitoso');
+      reply.code(200).send(data);
+    } catch (err) {
+      console.error('❌ POST /auth/refresh: Error:', err);
+      reply.code(500).send({ 
+        message: 'Error en servidor al renovar token' 
+      });
+    }
   })
 
   /** ---------- LOGOUT ---------- */
