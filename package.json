@@ -26,6 +26,7 @@
     "fastify-rate-limit": "^5.8.0",
     "fs-extra": "11.3.0",
     "mysql2": "3.13.0",
+    "nodemailer": "^8.0.10",
     "prompts": "2.4.2",
     "sequelize": "6.37.6"
   },

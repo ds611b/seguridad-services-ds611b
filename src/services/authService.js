@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import { sha256 } from '../utils/sha256.js'
 import { Usuarios, Sesiones, UsuariosSesiones, Roles } from '../models/index.js'
+import { sendResetEmail } from './emailService.js'
 
 const SALT_ROUNDS = 10
 const ACCESS_EXPIRES = process.env.JWT_ACCESS_EXPIRES || '15m'
@@ -251,14 +252,29 @@ export async function logout({ refreshToken }) {
 
 export async function requestReset(email, fastify) {
   const user = await Usuarios.findOne({ where: { email } })
-  if (!user || user.status === 0) return null
 
-  // Crear token de 30 min solo para reset.
+  if (!user || user.status === 0) return false
+
   const resetToken = fastify.jwt.sign(
     { uid: user.id, pwd_reset: true },
     { expiresIn: '30m' }
   )
-  return resetToken
+
+  await sendResetEmail(email, resetToken)
+  return true
+}
+
+export async function adminResetPassword(adminPayload, usuario_id, newPassword) {
+  if (adminPayload.role_name !== 'Coordinador General') {
+    throw { statusCode: 403, code: 'FORBIDDEN', message: 'No tienes permisos para esta acción' }
+  }
+
+  const user = await Usuarios.findByPk(usuario_id)
+  if (!user || user.status === 0) return false
+
+  const hash = await bcrypt.hash(newPassword, SALT_ROUNDS)
+  await Usuarios.update({ password_hash: hash }, { where: { id: usuario_id } })
+  return true
 }
 
 export async function resetPassword(token, newPassword, fastify) {

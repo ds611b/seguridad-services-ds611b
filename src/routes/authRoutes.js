@@ -1,5 +1,10 @@
-import { register, login, refresh, logout, requestReset, resetPassword } from '../services/authService.js'
+import { register, login, refresh, logout, requestReset, resetPassword, adminResetPassword } from '../services/authService.js'
 import { Type } from '@sinclair/typebox'
+
+const requireRole = (roleName) => async (req, reply) => {
+  if (req.user?.role_name !== roleName)
+    return reply.forbidden('No tienes permisos para esta acción')
+}
 
 export default async function (fastify) {
   // Esquema para el cuerpo de solicitud en /auth/register
@@ -189,6 +194,45 @@ export default async function (fastify) {
   }, async (req, reply) => {
     const ok = await resetPassword(req.body.token, req.body.newPassword, fastify)
     if (!ok) return reply.error?.(400, 'Token inválido o expirado')      // usa tu helper
+    reply.send({ success: true })
+  })
+
+  /* ---------- FORGOT PASSWORD (envía email con link de reset) ---------- */
+  fastify.post('/auth/forgot-password', {
+    schema: {
+      tags: ['Auth'],
+      summary: 'Solicitar email para restablecer contraseña',
+      body: Type.Object({
+        email: Type.String({ format: 'email' })
+      }),
+      response: {
+        200: Type.Object({ success: Type.Boolean() })
+      }
+    }
+  }, async (req, reply) => {
+    const ok = await requestReset(req.body.email, fastify)
+    if (!ok) return reply.notFound('El correo no está registrado o la cuenta está inactiva')
+    reply.send({ success: true })
+  })
+
+  /* ---------- ADMIN RESET PASSWORD (Coordinador General asigna contraseña) ---------- */
+  fastify.post('/auth/admin/reset-password', {
+    schema: {
+      tags: ['Auth'],
+      summary: 'Coordinador General asigna nueva contraseña a un usuario',
+      security: [{ bearerAuth: [] }],
+      body: Type.Object({
+        usuario_id: Type.Integer(),
+        newPassword: Type.String({ minLength: 8 })
+      }),
+      response: {
+        200: Type.Object({ success: Type.Boolean() })
+      }
+    },
+    preHandler: [fastify.authenticate, requireRole('Coordinador General')]
+  }, async (req, reply) => {
+    const ok = await adminResetPassword(req.user, req.body.usuario_id, req.body.newPassword)
+    if (!ok) return reply.notFound('Usuario no encontrado o inactivo')
     reply.send({ success: true })
   })
 }
